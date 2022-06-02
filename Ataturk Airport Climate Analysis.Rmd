@@ -1,0 +1,416 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+#selected region is ISTANBUL-TURKEY- DATA extracting
+library(GSODR)
+station <- "170600-99999"
+gsod <- get_GSOD(years=1990:2020, station = station)
+
+YY    <- gsod$YEAR
+MM    <- gsod$MONTH
+DD    <- gsod$DAY 
+DAT   <- paste0(YY,"-",MM,"-",DD)
+
+TT    <- gsod$TEMP
+TMAX  <- gsod$MAX
+TMIN  <- gsod$MIN
+PRCP  <- gsod$PRCP
+
+clim  <- data.frame(DAT,TT,TMAX,TMIN,PRCP)
+fname <- "ISTANBUL.txt"
+write.table(clim,file = fname, col.names = TRUE,row.names = FALSE)
+```
+```{r}
+#1. Read the data 
+gsod<-read.table("ISTANBUL.txt",header=TRUE)
+
+Tdies <- gsod$TT    # gsod$TT
+Tmax  <- gsod$TMAX  # gsod$TX
+Tmin  <- gsod$TMIN  # gsod$TN
+Prec  <- gsod$PR    # gsod$PRCP
+```
+
+```{r}
+# 2. Define time vector  (years, months, days)
+
+DAT  <- gsod$DAT   # gsod$DAT
+dats <- as.Date(DAT)
+
+yyyy <- as.numeric(substring(dats,1,4))
+mm   <- as.numeric(substring(dats,6,7))
+dd   <- as.numeric(substring(dats,9,10))
+
+#yyyy  <- gsod$V1
+#mm    <- gsod$V2
+#dd    <- gsod$V3``{r}
+
+```
+
+```{r}
+# 3. Find starting year and number of years in your file  
+ystart<-yyyy[1]
+yend<-yyyy[length(yyyy)]
+numyear<-yend-ystart+1
+```
+
+```{r}
+# 4. Calculate number of hot days (Tmax>25oC)
+
+ldayTmax<-(1:numyear)*0
+
+for (yy in ystart:yend) {
+iy<-yy-ystart+1
+sum<-0
+licz<-0
+for (i in 1:length(yyyy)) {
+if(is.na(Tmax[i])==FALSE){
+if (yyyy[i]==yy & Tmax[i]>=25) {licz=licz+1}
+}
+}
+ ifelse(licz==0,ldayTmax[iy]<-NA,ldayTmax[iy]<-licz) 
+}
+
+anomalylmax<-ldayTmax-mean(ldayTmax,na.rm=TRUE)
+
+# 5.Plot
+time<-ystart:yend
+plot(time,ldayTmax,type="o",main="Number of hot days ",col="red")
+dev.copy(png, "Figures/Figure17.png", units = 'in', width=8.5, height=6, res=1200) #Saving the results
+dev.off()
+
+plot(time,anomalylmax,type="o",main="Number of hot days - anomaly",col="red");abline(h=0.0,col="black",lwd=1)
+
+dev.copy(png, "Figures/Figure1.png", units = 'in', width=8.5, height=6, res=1200) #Saving the results
+dev.off()
+
+```
+
+
+```{r}
+# 6. Calculate number of cold days (Tmin<0oC)
+
+ldayTmin<-(1:numyear)*0
+
+for (yy in ystart:yend) {
+iy<-yy-ystart+1
+sum<-0
+licz<-0
+for (i in 1:length(yyyy)) {
+if(is.na(Tmin[i])==FALSE){
+if (yyyy[i]==yy & Tmin[i]<=0) {licz=licz+1}
+}
+}
+ ifelse(licz==0,ldayTmin[iy]<-NA,ldayTmin[iy]<-licz) 
+}
+
+anomalylmin<-ldayTmin-mean(ldayTmin,na.rm=TRUE)
+
+# 7.Plot
+time<-ystart:yend
+
+plot(time,ldayTmin,type="o",main="Number of frost days ",col="red")
+
+dev.copy(png, "Figures/Figure19.png", units = 'in', width=8.5, height=6, res=850) #Saving the results
+dev.off()
+
+plot(time,anomalylmin,type="o",main="Number of frost days - anomaly",col="red");abline(h=0.0,col="black",lwd=1)
+
+dev.copy(png, "Figures/Figure18.png", units = 'in', width=8.5, height=6, res=1200) #Saving the results
+dev.off()
+
+```
+
+```{r}
+# 8. Number of days with precipitation and with prec.exceeding > 15 mm
+ldayP<-(1:numyear)*0
+ldayPhigh<-(1:numyear)*0
+
+for (yy in ystart:yend) {
+iy<-yy-ystart+1
+liczP<-0
+liczPhigh<-0
+for (i in 1:length(yyyy)) {
+if(is.na(Prec[i])==FALSE)
+{
+if (yyyy[i]==yy & Prec[i]>0) liczP=liczP+1
+if (yyyy[i]==yy & Prec[i]>=15) liczPhigh=liczPhigh+1
+}
+}
+ ifelse(liczP==0,ldayP[iy]<-NA,ldayP[iy]<-liczP)
+ ifelse(liczPhigh==0,ldayPhigh[iy]<-NA,ldayPhigh[iy]<-liczPhigh)
+}
+
+anomalylP<-ldayP-mean(ldayP,na.rm=TRUE)
+anomalyPhigh<-ldayPhigh-mean(ldayPhigh,na.rm=TRUE)
+yrange <- range(ldayP,ldayPhigh)
+```
+
+
+```{r}
+
+# 9. Plots
+time <-ystart:yend
+plot(time,ldayP,type="o",main="Number of days with precipitation",col="green", ylim = yrange)
+lines(time,ldayPhigh, type="o", main="Number of days with precipitation > 15 mm ",col="blue")
+
+legend("topright",legend = c("Number of days with precipitation","Number of days with precipitation > 15 mm "), 
+       col=c("green","blue"),
+       lwd=c(2,2), ncol = 1,cex=0.5)
+
+dev.copy(png, "Figures/Figure20.png", units = 'in', width=8.5, height=6, res=1200) #Saving the results
+dev.off()
+
+plot(time,anomalylP,type="o",main="Number of days with precipitation - anomaly",col="green");lines(time,anomalyPhigh,type="o",main="Number of days with precipitation > 15 mm - anomaly",col="blue");abline(h=0.0,col="black",lwd=1)
+
+legend("topright",legend = c("Number of days with precipitation","Number of days with precipitation > 15 mm"), 
+       col=c("green","blue"),
+       lwd=c(2,2), ncol = 1,cex=0.5)
+dev.copy(png, "Figures/Figure3.png", units = 'in', width=8.5, height=6, res=1200) #Saving the results
+dev.off()
+
+
+```
+
+```{r}
+
+#Calculate monthly mean averages for the temperature (if number of
+# available measurements > 15)
+
+aver<-matrix(0,numyear+1,12+1)
+for (yy in ystart:yend) {
+iy<-yy-ystart+1
+for (im in 1:12) {
+licz<-0
+sum<-0
+for (i in 1:length(yyyy)) {
+if (yyyy[i]==yy & mm[i]==im) {sum=sum+Tdies[i];licz=licz+1}
+}
+ ifelse(licz<15,aver[iy,im]<-NA,aver[iy,im]<-sum/licz)
+}
+}
+
+# 5. Calculate annual averages + multi-annual monthly means
+for (i in 1:numyear) aver[i,13]<-mean(aver[i,1:12])
+for (i in 1:12) aver[numyear+1,i]<-mean(aver[1:numyear,i],na.rm=TRUE)
+
+# 6. Calculate multiannual mean 
+allyear<-mean(Tdies,na.rm=TRUE)
+
+# 7. Calculate mean annual temperature anomalies  
+yearav<-aver[1:numyear,13]
+anomaly<-yearav-allyear
+
+# 8.Plot
+time<-ystart:yend
+plot(time,yearav,type="o",main="Mean annual temperature",col="red");abline(h=0.0,col="black",lwd=1)
+dev.copy(png, "Figures/Figure16.png", units = 'in', width=8.5, height=6, res=1200) #Saving the results
+dev.off()
+plot(time,anomaly,type="o",main="Mean annual temperature anomalies",col="red");abline(h=0.0,col="black",lwd=1)
+
+dev.copy(png, "Figures/Figure4.png", units = 'in', width=8.5, height=6, res=1200) #Saving the results
+dev.off()
+
+```
+
+
+```{r}
+# Calculate monthly precipitation (sum)  
+sumP<-matrix(0,numyear+1,12+1)
+for (yy in ystart:yend) {
+iy<-yy-ystart+1
+for (im in 1:12) {
+licz<-0
+sum<-0
+for (i in 1:length(yyyy)) {
+if (yyyy[i]==yy & mm[i]==im) {sum=sum+Prec[i];licz=licz+1}
+}
+ ifelse(licz==0,sumP[iy,im]<-NA,sumP[iy,im]<-sum)
+}
+}
+
+# Calculate monthly and annual precipitation sum
+for (i in 1:numyear) sumP[i,13]<-sum(sumP[i,1:12])
+for (i in 1:12) sumP[numyear+1,i]<-mean(sumP[1:numyear,i],na.rm=TRUE)
+
+# Calculate average multi-annual sum and anomalies 
+allyearP<-mean(sumP[1:numyear,13],na.rm=TRUE)
+yearsumP<-sumP[1:numyear,13]
+anomalyP<-yearsumP-allyearP
+
+# Plot
+time<-ystart:yend
+plot(time,yearsumP,type="h",main="Annual Precipitation sum",col="lightblue",lwd=10);abline(h=0.0,col="black",lwd=1)
+#dev.copy(png, "Figures/Figure5.png", units = 'in', width=8.5, height=6, res=1200) #Saving the results
+#dev.off()
+
+plot(time,anomalyP,type="h",main="Precipitation anomaly (annual sum)",col="lightblue",lwd=10);abline(h=0.0,col="black",lwd=1)
+
+#dev.copy(png, "Figures/Figure6.png", units = 'in', width=8.5, height=6, res=1200) #Saving the results
+#dev.off()
+
+```
+
+
+```{r}
+
+#  Climate type
+Temperature <-aver[numyear+1,1:12]
+Precipitation <-sumP[numyear+1,1:12]
+month <-1:12
+plot(month,Temperature,ylim=c(min(Temperature),max(Temperature)),axes=FALSE,main="Climatograph",col="black",type="n")
+
+axis(1,at=1:12,lab=c("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"))
+axis(2,at=floor(min(Temperature)):ceiling(max(Temperature)))
+par(new=TRUE)
+
+plot(x, Precipitation,type="h",col="lightblue",ann=FALSE,xaxt="n",yaxt="n",xlab="",ylab="",lwd=20)
+axis(4)
+mtext ("Precipitation",side=4)
+
+par(new=TRUE)
+plot(month,Temperature,ylim=c(min(Temperature),max(Temperature)),axes=FALSE,lwd=2,col="black",type="o")
+
+#dev.copy(png, "Figures/Figure7.png", units = 'in', width=8.5, height=6, res=1200) #Saving the results
+#dev.off()
+
+```
+
+```{r}
+## Statistic and frequency
+
+gsod  <- read.table("ISTANBUL.txt", header = TRUE)
+Tdies <- gsod$TT
+Prec <- gsod$PRCP
+
+DAT <- gsod$DAT
+dats <- as.Date(DAT)
+
+yyyy<- as.numeric(substring(dats,1,4))
+mm<- as.numeric(substring(dats,6,7))
+dd<- as.numeric(substring(dats,9,10))
+
+```
+
+
+```{r}
+
+# 2. Calculate statistcs of the series
+# mean, median,25 i 75 quartile, min, max
+summary(Tdies,na.rm=TRUE)
+summary(Prec,na.rm=TRUE)
+
+
+# 3. Display histogram and automatically fitted probability density function
+hist(Tdies,breaks=20,main="Tdies",col="red")
+box()
+#dev.copy(png, "Figures/Figure8.png", units = 'in', width=8.5, height=6, res=1200) #Saving the results
+#dev.off()
+plot(density(Tdies))
+#dev.copy(png, "Figures/Figure9.png", units = 'in', width=8.5, height=6, res=1200) #Saving the results
+#dev.off()
+
+
+# 4.1 June,July,August
+
+TJJA<-0.
+
+for (im in 6:8) {
+for (i in 1:length(yyyy)) {
+if (mm[i]==im) TJJA<-c(TJJA,Tdies[i])
+}}
+
+TJJA<-TJJA[-1]
+# mean
+mean(TJJA,na.rm=TRUE)
+# standard deviation
+sd(TJJA,na.rm=TRUE)
+
+#Display histogram for TJJA
+hist(TJJA,breaks=15,main="Temperature JJA",col="yellow")
+#dev.copy(png, "Figures/Figure10.png", units = 'in', width=8.5, height=6, res=1200) #Saving the results
+#dev.off()
+#
+# 4.2 December,January,February
+TDJF<-0
+for (im in c(1,2,12)) {
+for (i in 1:length(yyyy)) {
+if (mm[i]==im) TDJF<-c(TDJF,Tdies[i])
+}}
+TDJF<-TDJF[-1]
+# mean
+mean(TDJF,na.rm=TRUE)
+# standard deviation
+sd(TDJF,na.rm=TRUE)
+
+#Display histgram for TDJF
+hist(TDJF,breaks=15,main="Temperature DJF",col="lightblue")
+dev.copy(png, "Figures/Figure11.png", units = 'in', width=8.5, height=6, res=1200) #Saving the results
+dev.off()
+
+```
+
+
+
+```{r}
+#5. Calculate statistcs of the precipitation series
+# mean, median,25 i 75 quartile, min, max
+summary(Prec,na.rm=TRUE)
+```
+
+```{r}
+# 6. Display histogram and automatically fitted probability density function
+hist(Prec,breaks=50,main="Precipitation",col="red")
+#dev.copy(png, "Figures/Figure12.png", units = 'in', width=8.5, height=6, res=1200) #Saving the results
+#dev.off()
+plot(density(Prec,na.rm=TRUE))
+dev.copy(png, "Figures/Figure13.png", units = 'in', width=8.5, height=6, res=1200) #Saving the results
+dev.off()
+```
+
+```{r}
+# 7. summer and winter precipitation distribution
+
+# 7.1 June,July,August
+PJJA<-0
+for (im in 6:8) {
+for (i in 1:length(yyyy)) {
+if (mm[i]==im) PJJA<-c(PJJA,Prec[i])
+}}
+PJJA<-PJJA[-1]
+# mean
+mean(PJJA,na.rm=TRUE)*30
+# standard deviation
+sd(PJJA,na.rm=TRUE)
+
+#Display histgram for JJA
+hist(PJJA,breaks=45,main="Precipitation JJA",col="magenta")
+dev.copy(png, "Figures/Figure14.png", units = 'in', width=8.5, height=6, res=1200) #Saving the results
+dev.off()
+#
+# 7.2 December,January,February
+PDJF<-0
+for (im in c(1,2,12)) {
+for (i in 1:length(yyyy)) {
+if (mm[i]==im) PDJF<-c(PDJF,Prec[i])
+}}
+PDJF<-PDJF[-1]
+# mean
+mean(PDJF,na.rm=TRUE)*30
+# standard deviation
+sd(PDJF,na.rm=TRUE)
+
+#Display histgram for July and January
+hist(PDJF,breaks=45,main="Precipitation DJF",col="grey")
+dev.copy(png, "Figures/Figure15.png", units = 'in', width=8.5, height=6, res=1200) #Saving the results
+dev.off()
+
+```
+
+
